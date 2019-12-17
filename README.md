@@ -19,4 +19,4 @@ HEX PAD | QWERTY
 A 0 B F | Z X C V
 ```
 ## Screenshot
-![image](https://user-images.githubusercontent.com/1664307/70993745-eaa01b80-20cc-11ea-99ab-55bb7f3b9691.png)
+![image](https://user-images.githubusercontent.com/1664307/70995082-ef1a0380-20cf-11ea-8f43-97c67a446f4a.png)
