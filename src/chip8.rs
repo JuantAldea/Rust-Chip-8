@@ -1,5 +1,5 @@
-use std::time::Instant;
 use rand::Rng;
+use std::time::Instant;
 extern crate log;
 use log::{debug, info};
 
@@ -511,7 +511,8 @@ impl fmt::Display for Chip8 {
             f,
             "=PC: {:x}, SP: {:x}, DT: {:x}, ST: {:x} I: {:x} TC: {:}",
             &self.pc, &self.sp, &self.dt, &self.st, &self.i, &self.timer_counter
-        ).unwrap();
+        )
+        .unwrap();
         write!(f, "-------------------------------------------------")
     }
 }
