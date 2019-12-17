@@ -1,4 +1,4 @@
-# CHIP-8 Interpreter
+# CHIP-8 Emulator (Interpreter)
 Just another CHIP-8 interpreter written in Rust.
 
 ## Missing features
