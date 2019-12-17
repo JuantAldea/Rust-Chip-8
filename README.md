@@ -18,5 +18,6 @@ HEX PAD | QWERTY
 7 8 9 E | A S D F
 A 0 B F | Z X C V
 ```
-## Screenshot
+## Screenshots
 ![image](https://user-images.githubusercontent.com/1664307/70995082-ef1a0380-20cf-11ea-8f43-97c67a446f4a.png)
+![image](https://user-images.githubusercontent.com/1664307/70998539-df062200-20d7-11ea-94f4-464cb76be4bf.png)
