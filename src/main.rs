@@ -26,7 +26,6 @@ fn main() {
     }
 
     let sdl_context = sdl2::init().unwrap();
-    let args: Vec<String> = env::args().collect();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
         .window("Chip-8", X_SIZE, Y_SIZE)
