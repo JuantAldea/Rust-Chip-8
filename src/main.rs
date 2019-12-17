@@ -1,8 +1,8 @@
 extern crate image as im;
-extern crate piston_window;
 extern crate log;
-use std::time::Instant;
+extern crate piston_window;
 use std::env;
+use std::time::Instant;
 
 use self::piston_window::*;
 
@@ -54,23 +54,33 @@ fn main() {
 
     while let Some(e) = window.next() {
         let _now = Instant::now();
+        /*
+          HEX PAD | QWERTY
+          1 2 3 C | 1 2 3 4
+          4 5 6 D | Q W E R
+          7 8 9 E | A S D F
+          A 0 B F | Z X C V
+        */
         if let Some(btn) = e.press_args() {
             match btn {
-                Button::Keyboard(Key::D1) => keyboard[0x0] = true,
-                Button::Keyboard(Key::D2) => keyboard[0x1] = true,
-                Button::Keyboard(Key::D3) => keyboard[0x2] = true,
-                Button::Keyboard(Key::D4) => keyboard[0x3] = true,
+                Button::Keyboard(Key::D1) => keyboard[0x1] = true,
+                Button::Keyboard(Key::D2) => keyboard[0x2] = true,
+                Button::Keyboard(Key::D3) => keyboard[0x3] = true,
+                Button::Keyboard(Key::D4) => keyboard[0xC] = true,
+
                 Button::Keyboard(Key::Q) => keyboard[0x4] = true,
                 Button::Keyboard(Key::W) => keyboard[0x5] = true,
                 Button::Keyboard(Key::E) => keyboard[0x6] = true,
-                Button::Keyboard(Key::R) => keyboard[0x7] = true,
-                Button::Keyboard(Key::A) => keyboard[0x8] = true,
-                Button::Keyboard(Key::S) => keyboard[0x9] = true,
-                Button::Keyboard(Key::D) => keyboard[0xA] = true,
-                Button::Keyboard(Key::F) => keyboard[0xB] = true,
-                Button::Keyboard(Key::Z) => keyboard[0xC] = true,
-                Button::Keyboard(Key::X) => keyboard[0xD] = true,
-                Button::Keyboard(Key::C) => keyboard[0xE] = true,
+                Button::Keyboard(Key::R) => keyboard[0xD] = true,
+
+                Button::Keyboard(Key::A) => keyboard[0x7] = true,
+                Button::Keyboard(Key::S) => keyboard[0x8] = true,
+                Button::Keyboard(Key::D) => keyboard[0x9] = true,
+                Button::Keyboard(Key::F) => keyboard[0xE] = true,
+
+                Button::Keyboard(Key::Z) => keyboard[0xA] = true,
+                Button::Keyboard(Key::X) => keyboard[0x0] = true,
+                Button::Keyboard(Key::C) => keyboard[0xB] = true,
                 Button::Keyboard(Key::V) => keyboard[0xF] = true,
 
                 Button::Keyboard(Key::P) => machine.int(),
@@ -81,21 +91,24 @@ fn main() {
 
         if let Some(btn) = e.release_args() {
             match btn {
-                Button::Keyboard(Key::D1) => keyboard[0x0] = false,
-                Button::Keyboard(Key::D2) => keyboard[0x1] = false,
-                Button::Keyboard(Key::D3) => keyboard[0x2] = false,
-                Button::Keyboard(Key::D4) => keyboard[0x3] = false,
+                Button::Keyboard(Key::D1) => keyboard[0x1] = false,
+                Button::Keyboard(Key::D2) => keyboard[0x2] = false,
+                Button::Keyboard(Key::D3) => keyboard[0x3] = false,
+                Button::Keyboard(Key::D4) => keyboard[0xC] = false,
+
                 Button::Keyboard(Key::Q) => keyboard[0x4] = false,
                 Button::Keyboard(Key::W) => keyboard[0x5] = false,
                 Button::Keyboard(Key::E) => keyboard[0x6] = false,
-                Button::Keyboard(Key::R) => keyboard[0x7] = false,
-                Button::Keyboard(Key::A) => keyboard[0x8] = false,
-                Button::Keyboard(Key::S) => keyboard[0x9] = false,
-                Button::Keyboard(Key::D) => keyboard[0xA] = false,
-                Button::Keyboard(Key::F) => keyboard[0xB] = false,
-                Button::Keyboard(Key::Z) => keyboard[0xC] = false,
-                Button::Keyboard(Key::X) => keyboard[0xD] = false,
-                Button::Keyboard(Key::C) => keyboard[0xE] = false,
+                Button::Keyboard(Key::R) => keyboard[0xD] = false,
+
+                Button::Keyboard(Key::A) => keyboard[0x7] = false,
+                Button::Keyboard(Key::S) => keyboard[0x8] = false,
+                Button::Keyboard(Key::D) => keyboard[0x9] = false,
+                Button::Keyboard(Key::F) => keyboard[0xE] = false,
+
+                Button::Keyboard(Key::Z) => keyboard[0xA] = false,
+                Button::Keyboard(Key::X) => keyboard[0x0] = false,
+                Button::Keyboard(Key::C) => keyboard[0xB] = false,
                 Button::Keyboard(Key::V) => keyboard[0xF] = false,
 
                 _ => {}
@@ -125,7 +138,6 @@ fn main() {
                 }
             }
         }
-
 
         texture.update(&mut ctx, &canvas).unwrap();
         window.draw_2d(&e, |c, g, d| {
