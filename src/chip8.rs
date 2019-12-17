@@ -112,7 +112,7 @@ impl Chip8 {
             }
 
             if self.st > 0 {
-                self.dt -= 1;
+                self.st -= 1;
             }
             self.timer_counter = 0;
         } else {
