@@ -4,6 +4,7 @@ Just another CHIP-8 interpreter written in Rust.
 ## Missing features
 * Sound.
 * Proper timers.
+* Faster frontend
 
 ## Compile & Run
 ```$ cargo run --release path/to/rom```
