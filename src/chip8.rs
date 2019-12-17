@@ -460,9 +460,10 @@ impl Chip8 {
 
     pub fn ld_b_vx(&mut self, vx: usize) -> Result<(), Chip8Exception> {
         debug!("LD B, V{:x}", vx);
-        self.memory[self.i] = (vx / 100) as u8;
-        self.memory[self.i + 1] = (vx % 100) as u8;
-        self.memory[self.i + 2] = (vx % 10) as u8;
+        self.memory[self.i] = (self.v[vx] / 100) as u8;
+        self.memory[self.i + 1] = (self.v[vx] as u8 - 100 * self.memory[self.i]) / 10 as u8;
+        self.memory[self.i + 2] =
+            (self.v[vx] as u8 - 100 * self.memory[self.i] - 10 * self.memory[self.i + 1]) as u8;
         Ok(())
     }
 
@@ -507,6 +508,7 @@ impl fmt::Display for Chip8 {
         writeln!(f, "=Sx{:x?}", &self.stack).unwrap();
         writeln!(f, "=Vx{:x?} ", &self.v).unwrap();
         writeln!(f, "=Kx{:x?} ", &self.keys).unwrap();
+        writeln!(f, "=Mix{:x?} ", &self.memory[self.i..self.i + 6]).unwrap();
         writeln!(
             f,
             "=PC: {:x}, SP: {:x}, DT: {:x}, ST: {:x} I: {:x} TC: {:}",
