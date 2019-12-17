@@ -38,7 +38,7 @@ pub struct Chip8 {
     pub waiting_for_key: bool,
     pub read_key_registry: usize,
     pub interrupted: bool,
-    pub rendered: bool,
+    pub video_memory_tainted: bool,
 }
 
 #[derive(Debug)]
@@ -53,13 +53,13 @@ pub enum Chip8Exception {
 
 impl Chip8 {
     pub fn new() -> Self {
-        Chip8::default()
+        Self::default()
     }
 
     pub fn init(&mut self) {
         self.memory[self.font_base_addr..self.font_base_addr + 80].copy_from_slice(&FONT);
         for i in self.video_memory.iter_mut() {
-            *i = false
+            *i = false;
         }
     }
 
@@ -71,9 +71,24 @@ impl Chip8 {
         self.interrupted = !self.interrupted;
     }
 
-    pub fn tick(&mut self, input: &[bool]) {
+    pub fn tick_clock(&mut self, input: &[bool; 16]) {
+        if self.interrupted {
+            return;
+        }
+
+        self.next(input);
+    }
+
+    pub fn next(&mut self, input: &[bool; 16]) {
         self.read_input(input);
+
+        if self.waiting_for_key {
+            info!("Waiting for keypress");
+            return;
+        }
+
         debug!("{}", self);
+
         self.cycle();
     }
 
@@ -88,21 +103,11 @@ impl Chip8 {
     }
 
     pub fn cycle(&mut self) {
-        if self.interrupted {
-            return;
-        }
-
-        if self.waiting_for_key {
-            info!("Waiting for keypress");
-            return;
-        }
-
         let _now = Instant::now();
-        self.rendered = false;
+        self.video_memory_tainted = false;
         let op_code = self.fetch_instruction().unwrap();
         self.decode_and_exec_instruction(op_code).unwrap();
         self.update_timers();
-        //println!("Cycle: {}us", _now.elapsed().as_micros());
     }
 
     pub fn update_timers(&mut self) {
@@ -114,6 +119,7 @@ impl Chip8 {
             if self.st > 0 {
                 self.st -= 1;
             }
+
             self.timer_counter = 0;
         } else {
             self.timer_counter += 1;
@@ -202,7 +208,7 @@ impl Chip8 {
 
         let op_code = (self.memory[self.pc] as u16) << 8 | self.memory[self.pc + 1] as u16;
         debug!(
-            "=PC:0x{:04x} -> 0x{:04x} ({:x}|{:x}) => ",
+            "=PC:0x{:04x} -> 0x{:04x} ({:x}|{:x})",
             self.pc,
             op_code,
             self.memory[self.pc],
@@ -217,7 +223,7 @@ impl Chip8 {
         for i in self.video_memory.iter_mut() {
             *i = false
         }
-        self.rendered = true;
+        self.video_memory_tainted = true;
         Ok(())
     }
 
@@ -395,11 +401,11 @@ impl Chip8 {
                     if self.video_memory[position] {
                         self.v[0xF] = 1;
                     }
+                    self.video_memory_tainted = true;
                     self.video_memory[position] ^= pixel_value;
                 }
             }
         }
-        self.rendered = true;
         Ok(())
     }
 
@@ -512,7 +518,7 @@ impl fmt::Display for Chip8 {
         writeln!(
             f,
             "=PC: {:x}, SP: {:x}, DT: {:x}, ST: {:x} I: {:x} TC: {:}",
-            &self.pc, &self.sp, &self.dt, &self.st, &self.i, &self.timer_counter
+            &self.pc, &self.sp, &self.dt, &self.st, &self.i, &self.timer_counter,
         )
         .unwrap();
         write!(f, "-------------------------------------------------")
@@ -537,7 +543,7 @@ impl Default for Chip8 {
             waiting_for_key: false,
             read_key_registry: 0,
             interrupted: false,
-            rendered: false,
+            video_memory_tainted: false,
         }
     }
 }

@@ -1,160 +1,184 @@
-extern crate image as im;
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use sdl2::rect::Rect;
+use std::fs::File;
+use std::io::Read;
+use std::time::{Duration, Instant};
+extern crate env_logger;
 extern crate log;
-extern crate piston_window;
-use std::env;
-use std::time::Instant;
-
-use self::piston_window::*;
-
 use crate::chip8::Chip8;
+use log::debug;
+use std::env;
+
 const CELL_PIXEL_SIDE: u32 = 20;
 const X_SIZE: u32 = CELL_PIXEL_SIDE * 64;
 const Y_SIZE: u32 = CELL_PIXEL_SIDE * 32;
-const UPS: u32 = 4000;
 
 pub mod chip8;
+
 fn main() {
+    env_logger::init();
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        println!("missing rom!");
+        println!("ROM missing!");
         return;
     }
 
-    let mut window: PistonWindow = WindowSettings::new("Chip-8", [X_SIZE, Y_SIZE])
-        .resizable(false)
-        .exit_on_esc(true)
-        .graphics_api(OpenGL::V3_2)
-        .fullscreen(false)
+    let sdl_context = sdl2::init().unwrap();
+    let args: Vec<String> = env::args().collect();
+    let video_subsystem = sdl_context.video().unwrap();
+    let window = video_subsystem
+        .window("Chip-8", X_SIZE, Y_SIZE)
+        .position_centered()
+        .opengl()
         .build()
         .unwrap();
 
-    window.events = Events::new(EventSettings {
-        max_fps: 4000,
-        ups: UPS as u64,
-        ups_reset: 2,
-        swap_buffers: true,
-        lazy: false,
-        bench_mode: false,
-    });
+    let mut canvas = window.into_canvas().build().unwrap();
 
-    let mut canvas = im::ImageBuffer::new(X_SIZE as u32, Y_SIZE as u32);
-    let mut ctx = window.create_texture_context();
+    canvas.set_draw_color(Color::RGB(0, 0, 0));
+    canvas.clear();
+    canvas.present();
 
-    let mut texture = Texture::from_image(&mut ctx, &canvas, &TextureSettings::new()).unwrap();
+    let mut machine = Chip8::new();
+    machine.init();
 
     let rom = read_file(&args[1]);
 
-    let mut machine = Chip8::new();
-
-    machine.init();
     machine.load_rom(0x200, &rom);
     machine.set_pc(0x200);
 
     let mut keyboard = [false; 16];
 
-    while let Some(e) = window.next() {
-        let _now = Instant::now();
-        /*
-          HEX PAD | QWERTY
-          1 2 3 C | 1 2 3 4
-          4 5 6 D | Q W E R
-          7 8 9 E | A S D F
-          A 0 B F | Z X C V
-        */
-        if let Some(btn) = e.press_args() {
-            match btn {
-                Button::Keyboard(Key::D1) => keyboard[0x1] = true,
-                Button::Keyboard(Key::D2) => keyboard[0x2] = true,
-                Button::Keyboard(Key::D3) => keyboard[0x3] = true,
-                Button::Keyboard(Key::D4) => keyboard[0xC] = true,
+    let mut event_pump = sdl_context.event_pump().unwrap();
 
-                Button::Keyboard(Key::Q) => keyboard[0x4] = true,
-                Button::Keyboard(Key::W) => keyboard[0x5] = true,
-                Button::Keyboard(Key::E) => keyboard[0x6] = true,
-                Button::Keyboard(Key::R) => keyboard[0xD] = true,
+    'event_loop: loop {
+        let now = Instant::now();
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'event_loop,
 
-                Button::Keyboard(Key::A) => keyboard[0x7] = true,
-                Button::Keyboard(Key::S) => keyboard[0x8] = true,
-                Button::Keyboard(Key::D) => keyboard[0x9] = true,
-                Button::Keyboard(Key::F) => keyboard[0xE] = true,
+                Event::KeyDown {
+                    keycode: Some(Keycode::O),
+                    ..
+                } => {
+                    machine = Chip8::default();
+                    machine.init();
+                    machine.load_rom(0x200, &rom);
+                    machine.set_pc(0x200);
+                }
 
-                Button::Keyboard(Key::Z) => keyboard[0xA] = true,
-                Button::Keyboard(Key::X) => keyboard[0x0] = true,
-                Button::Keyboard(Key::C) => keyboard[0xB] = true,
-                Button::Keyboard(Key::V) => keyboard[0xF] = true,
+                Event::KeyDown {
+                    keycode: Some(keycode),
+                    ..
+                } => handle_key(&mut keyboard, &mut machine, keycode, true),
 
-                Button::Keyboard(Key::P) => machine.int(),
-                //Button::Keyboard(Key::N) => machine.tick(&keyboard),
-                _ => {}
-            }
-        }
-
-        if let Some(btn) = e.release_args() {
-            match btn {
-                Button::Keyboard(Key::D1) => keyboard[0x1] = false,
-                Button::Keyboard(Key::D2) => keyboard[0x2] = false,
-                Button::Keyboard(Key::D3) => keyboard[0x3] = false,
-                Button::Keyboard(Key::D4) => keyboard[0xC] = false,
-
-                Button::Keyboard(Key::Q) => keyboard[0x4] = false,
-                Button::Keyboard(Key::W) => keyboard[0x5] = false,
-                Button::Keyboard(Key::E) => keyboard[0x6] = false,
-                Button::Keyboard(Key::R) => keyboard[0xD] = false,
-
-                Button::Keyboard(Key::A) => keyboard[0x7] = false,
-                Button::Keyboard(Key::S) => keyboard[0x8] = false,
-                Button::Keyboard(Key::D) => keyboard[0x9] = false,
-                Button::Keyboard(Key::F) => keyboard[0xE] = false,
-
-                Button::Keyboard(Key::Z) => keyboard[0xA] = false,
-                Button::Keyboard(Key::X) => keyboard[0x0] = false,
-                Button::Keyboard(Key::C) => keyboard[0xB] = false,
-                Button::Keyboard(Key::V) => keyboard[0xF] = false,
+                Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => handle_key(&mut keyboard, &mut machine, keycode, false),
 
                 _ => {}
             }
         }
-        //println!("Input: {}us", _now.elapsed().as_micros());
-        machine.tick(&keyboard);
 
-        if !machine.rendered {
-            //continue;
-        }
+        machine.tick_clock(&keyboard);
 
-        let _now = Instant::now();
-
-        if e.render_args().is_some() {
+        if machine.video_memory_tainted {
             for y in 0..32 {
                 for x in 0..64 {
-                    let value = machine.video_memory[y * 64 + x];
-                    let color = if value { [255; 4] } else { [0; 4] };
-                    for j in 0..CELL_PIXEL_SIDE {
-                        let sy = y as u32 * CELL_PIXEL_SIDE + j;
-                        for i in 0..CELL_PIXEL_SIDE {
-                            let sx = x as u32 * CELL_PIXEL_SIDE + i;
-                            canvas.put_pixel(sx, sy, im::Rgba(color));
-                        }
-                    }
+                    let pixel_on = machine.video_memory[y * 64 + x];
+                    let color = if pixel_on {
+                        Color::RGB(255, 255, 255)
+                    } else {
+                        Color::RGB(0, 0, 0)
+                    };
+                    canvas.set_draw_color(color);
+                    let px = x as u32 * CELL_PIXEL_SIDE;
+                    let py = y as u32 * CELL_PIXEL_SIDE;
+                    canvas
+                        .fill_rect(Rect::new(
+                            px as i32,
+                            py as i32,
+                            CELL_PIXEL_SIDE,
+                            CELL_PIXEL_SIDE,
+                        ))
+                        .unwrap();
                 }
             }
         }
 
-        texture.update(&mut ctx, &canvas).unwrap();
-        window.draw_2d(&e, |c, g, d| {
-            ctx.encoder.flush(d);
-            clear([0., 0., 0., 1.], g);
-            image(&texture, c.transform, g);
-        });
-        //println!("Render: {}ms", _now.elapsed().as_millis());
+        canvas.present();
+        let elapsed_time = now.elapsed();
+
+        debug!("Cycle: {}us, ", elapsed_time.as_micros());
+        // 1 second / 600Hz - cycle_time
+        if let Some(duration) = Duration::new(0, 10_000_000 / 6).checked_sub(elapsed_time) {
+            debug!("Sleep {}us", duration.as_micros());
+            ::std::thread::sleep(duration);
+        }
     }
 }
-
-use std::fs::File;
-use std::io::Read;
 
 fn read_file(path: &str) -> [u8; 3584] {
     let mut f = File::open(path).unwrap();
     let mut buffer = [0u8; 3584];
     let _len = f.read(&mut buffer).unwrap();
     buffer
+}
+
+pub fn handle_key(
+    pad_state: &mut [bool; 16],
+    machine: &mut Chip8,
+    keycode: Keycode,
+    pressed: bool,
+) {
+    /*
+        HEX PAD | QWERTY
+        1 2 3 C | 1 2 3 4
+        4 5 6 D | Q W E R
+        7 8 9 E | A S D F
+        A 0 B F | Z X C V
+    */
+
+    match keycode {
+        // Keypad keys
+        Keycode::Num1 => pad_state[0x1] = pressed,
+        Keycode::Num2 => pad_state[0x2] = pressed,
+        Keycode::Num3 => pad_state[0x3] = pressed,
+        Keycode::Num4 => pad_state[0xC] = pressed,
+
+        Keycode::Q => pad_state[0x4] = pressed,
+        Keycode::W => pad_state[0x5] = pressed,
+        Keycode::E => pad_state[0x6] = pressed,
+        Keycode::R => pad_state[0xD] = pressed,
+
+        Keycode::A => pad_state[0x7] = pressed,
+        Keycode::S => pad_state[0x8] = pressed,
+        Keycode::D => pad_state[0x9] = pressed,
+        Keycode::F => pad_state[0xE] = pressed,
+
+        Keycode::Z => pad_state[0xA] = pressed,
+        Keycode::X => pad_state[0x0] = pressed,
+        Keycode::C => pad_state[0xB] = pressed,
+        Keycode::V => pad_state[0xF] = pressed,
+
+        // other keys
+        Keycode::P => {
+            if pressed {
+                machine.int()
+            }
+        }
+        Keycode::N => {
+            if pressed {
+                machine.next(pad_state)
+            }
+        }
+        _ => {}
+    }
 }

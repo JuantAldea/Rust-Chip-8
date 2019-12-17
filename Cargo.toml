@@ -9,6 +9,6 @@ debug = true
 
 [dependencies]
 rand = "*"
-piston_window = "*"
-image = "*"
 log = "*"
+sdl2 = "*"
+env_logger ="*"
