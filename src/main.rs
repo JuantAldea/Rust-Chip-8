@@ -78,7 +78,6 @@ fn main() {
 
     machine.load_rom(0x200, &rom);
     machine.set_pc(0x200);
-    machine.int();
 
     let mut keyboard = [false; 16];
     let mut event_pump = sdl_context.event_pump().unwrap();
