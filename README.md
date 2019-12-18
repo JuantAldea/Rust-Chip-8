@@ -15,9 +15,11 @@ A 0 B F | Z X C V
 ```
 
 ### Debug controls
-`p` -> `pause cpu`
+`p` -> `Pause CPU`
 
-`n` -> `next cycle`
+`n` -> `Next cycle`
+
+`o` -> `Reset program`
 
 `Numkey+` -> `Duplicate clock freq`
 
