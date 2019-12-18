@@ -171,10 +171,7 @@ pub fn process_sound<T: sdl2::audio::AudioCallback>(
 ) {
     if machine.st == 0 {
         device.pause();
-        return;
-    }
-
-    if machine.st != 0 {
+    } else {
         device.resume();
     }
 }
