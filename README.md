@@ -27,6 +27,7 @@ A 0 B F | Z X C V
 
 `Numkey0` -> `Reset freq (600hz)`
 
+Modifying the Clock frequency will alter the ticking speed of sound and delay registries as they tick at a tenth of the clock speed (60hz).
 
 ## Screenshots
 ![image](https://user-images.githubusercontent.com/1664307/70995082-ef1a0380-20cf-11ea-8f43-97c67a446f4a.png)
