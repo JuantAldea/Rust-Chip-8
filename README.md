@@ -22,7 +22,7 @@ A 0 B F | Z X C V
 * `Numkey+` -> `Halve clock freq`
 * `Numkey0` -> `Reset freq (600hz)`
 
-Modifying the Clock frequency will alter the ticking speed of sound and delay registries as they tick at a tenth of the clock speed (60hz).
+Modifying the Clock frequency will alter the counting speed of the sound (`st`) and the delay (`dt`) registries, as they tick at a tenth of the clock speed (60hz).
 
 ## Resources
 * http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
