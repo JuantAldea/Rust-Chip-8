@@ -16,10 +16,15 @@ A 0 B F | Z X C V
 
 ### Debug controls
 `p` -> `pause cpu`
+
 `n` -> `next cycle`
+
 `Numkey+` -> `Duplicate clock freq`
+
 `Numkey+` -> `Halve clock freq`
+
 `Numkey0` -> `Reset freq (600hz)`
+
 
 ## Screenshots
 ![image](https://user-images.githubusercontent.com/1664307/70995082-ef1a0380-20cf-11ea-8f43-97c67a446f4a.png)
