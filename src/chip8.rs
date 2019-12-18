@@ -39,6 +39,10 @@ pub struct Chip8 {
     pub read_key_registry: usize,
     pub interrupted: bool,
     pub video_memory_tainted: bool,
+    pub chrono: std::time::Instant,
+
+    pub use_original_shr_shl: bool,
+    pub ignore_short_beeps: bool,
 }
 
 #[derive(Debug)]
@@ -56,6 +60,10 @@ impl Chip8 {
         Self::default()
     }
 
+    pub fn get_pixel(&self, x: usize, y: usize) -> bool {
+        self.video_memory[64 * y + x]
+    }
+
     pub fn init(&mut self) {
         self.memory[self.font_base_addr..self.font_base_addr + 80].copy_from_slice(&FONT);
         for i in self.video_memory.iter_mut() {
@@ -65,10 +73,6 @@ impl Chip8 {
 
     pub fn load_rom(&mut self, addr: usize, program: &[u8]) {
         self.memory[addr..].copy_from_slice(program);
-    }
-
-    pub fn int(&mut self) {
-        self.interrupted = !self.interrupted;
     }
 
     pub fn tick_clock(&mut self, input: &[bool; 16]) {
@@ -92,6 +96,37 @@ impl Chip8 {
         self.cycle();
     }
 
+    pub fn int(&mut self) {
+        self.interrupted = !self.interrupted;
+    }
+/*
+    pub fn process_sound<T: sdl2::audio::AudioCallback>(
+        &mut self,
+        device: &sdl2::audio::AudioDevice<T>,
+    ) {
+        if self.st == 0 {
+            device.pause();
+            //println!("SOUND STOP: TIEMPO: {}", self.chrono.elapsed().as_millis());
+            //self.int();
+
+            return;
+        }
+
+        if self.st != 0 {
+            device.resume();
+            /*
+            Notification::new()
+            .summary("STOP")
+            .body("This will almost look like a real firefox notification.")
+            .icon("firefox")
+            .timeout(2000)
+            .show();
+            self.chrono = Instant::now();
+            println!("SOUND START: TIEMPO: {}", self.chrono.elapsed().as_millis());
+            */
+        }
+    }
+*/
     pub fn read_input(&mut self, input: &[bool]) {
         for (i, item) in input.iter().enumerate().take(16) {
             self.keys[i] = *item;
@@ -107,23 +142,22 @@ impl Chip8 {
         self.video_memory_tainted = false;
         let op_code = self.fetch_instruction().unwrap();
         self.decode_and_exec_instruction(op_code).unwrap();
-        self.update_timers();
+        self.update_timers()
     }
 
     pub fn update_timers(&mut self) {
-        if self.timer_counter == 10 {
-            if self.dt > 0 {
-                self.dt -= 1;
-            }
-
-            if self.st > 0 {
-                self.st -= 1;
-            }
-
+        if self.dt == 0 && self.st == 0 {
             self.timer_counter = 0;
-        } else {
-            self.timer_counter += 1;
+            return;
         }
+
+        self.timer_counter = (self.timer_counter + 1) % 10;
+        if self.timer_counter != 0 {
+            return;
+        }
+
+        self.dt = self.dt.saturating_sub(1);
+        self.st = self.st.saturating_sub(1);
     }
 
     pub fn set_pc(&mut self, pc: usize) {
@@ -334,7 +368,8 @@ impl Chip8 {
 
     pub fn shr_vx_vy(&mut self, vx: usize, vy: usize) -> Result<(), Chip8Exception> {
         debug!("SHR V{:x} {{, V{:x}}}", vx, vy);
-        let (value, overflow) = self.v[vx].overflowing_shr(1);
+        let source_registry = if self.use_original_shr_shl { vy } else { vx };
+        let (value, overflow) = self.v[source_registry].overflowing_shr(1);
         self.v[0xF] = if overflow { 1 } else { 0 };
         self.v[vx] = value;
         Ok(())
@@ -349,7 +384,8 @@ impl Chip8 {
 
     pub fn shl_vx_vy(&mut self, vx: usize, vy: usize) -> Result<(), Chip8Exception> {
         debug!("SHL V{:x} '{{, V{:x}}}", vx, vy);
-        let (value, overflow) = self.v[vx].overflowing_shl(1);
+        let source_registry = if self.use_original_shr_shl { vy } else { vx };
+        let (value, overflow) = self.v[source_registry].overflowing_shl(1);
         self.v[0xF] = if overflow { 1 } else { 0 };
         self.v[vx] = value;
         Ok(())
@@ -447,8 +483,9 @@ impl Chip8 {
     }
 
     pub fn ld_st_vx(&mut self, vx: usize) -> Result<(), Chip8Exception> {
-        debug!("LD ST, V{:x}", vx);
+        debug!("LD ST, V{:x}({:x})", vx, self.v[vx]);
         self.st = self.v[vx];
+        //self.int();
         Ok(())
     }
 
@@ -538,12 +575,15 @@ impl Default for Chip8 {
             pc: 0,
             sp: 0,
             keys: [false; 16],
-            timer_counter: 10,
+            timer_counter: 0,
             font_base_addr: 0,
             waiting_for_key: false,
             read_key_registry: 0,
             interrupted: false,
             video_memory_tainted: false,
+            chrono: Instant::now(),
+            use_original_shr_shl: false,
+            ignore_short_beeps: false,
         }
     }
 }

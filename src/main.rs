@@ -1,3 +1,5 @@
+use sdl2::render::{Canvas, RenderTarget};
+
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -10,12 +12,21 @@ extern crate log;
 use crate::chip8::Chip8;
 use log::debug;
 use std::env;
-
+extern crate spin_sleep;
 const CELL_PIXEL_SIDE: u32 = 20;
 const X_SIZE: u32 = CELL_PIXEL_SIDE * 64;
 const Y_SIZE: u32 = CELL_PIXEL_SIDE * 32;
 
+/*
+let color_on: Color = Color::RGB(255, 255, 255);
+let color_off: Color = Color::RGB(0, 0, 0);
+*/
+
 pub mod chip8;
+
+pub fn machine_coordinates_to_pixel(x: usize, y: usize) -> (u32, u32) {
+    (x as u32 * CELL_PIXEL_SIDE, y as u32 * CELL_PIXEL_SIDE)
+}
 
 fn main() {
     env_logger::init();
@@ -26,6 +37,26 @@ fn main() {
     }
 
     let sdl_context = sdl2::init().unwrap();
+
+    let audio_subsystem = sdl_context.audio().unwrap();
+
+    let desired_spec = AudioSpecDesired {
+        freq: Some(44100),
+        channels: Some(1), // mono
+        samples: None,     // default sample size
+    };
+
+    let buzzer = audio_subsystem
+        .open_playback(None, &desired_spec, |spec| {
+            // initialize the audio callback
+            SquareWave {
+                phase_inc: 440.0 / spec.freq as f32,
+                phase: 0.0,
+                volume: 0.25,
+            }
+        })
+        .unwrap();
+
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
         .window("Chip-8", X_SIZE, Y_SIZE)
@@ -47,13 +78,17 @@ fn main() {
 
     machine.load_rom(0x200, &rom);
     machine.set_pc(0x200);
+    machine.int();
 
     let mut keyboard = [false; 16];
-
     let mut event_pump = sdl_context.event_pump().unwrap();
 
+    //600hz
+    let default_clock_cycle = Duration::new(0, 10_000_000 / 6);
+    let mut current_clock_cycle = default_clock_cycle;
+
     'event_loop: loop {
-        let now = Instant::now();
+        let looping_time = Instant::now();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -73,6 +108,23 @@ fn main() {
                 }
 
                 Event::KeyDown {
+                    keycode: Some(Keycode::KpPlus),
+                    ..
+                } => current_clock_cycle /= 2,
+
+                Event::KeyDown {
+                    keycode: Some(Keycode::KpMinus),
+                    ..
+                } => current_clock_cycle *= 2,
+
+                Event::KeyDown {
+                    keycode: Some(Keycode::Kp0),
+                    ..
+                } => {
+                    current_clock_cycle = default_clock_cycle;
+                }
+
+                Event::KeyDown {
                     keycode: Some(keycode),
                     ..
                 } => handle_key(&mut keyboard, &mut machine, keycode, true),
@@ -86,40 +138,65 @@ fn main() {
             }
         }
 
+        //machine.process_sound(&buzzer);
+        process_sound(&machine, &buzzer);
         machine.tick_clock(&keyboard);
 
         if machine.video_memory_tainted {
-            for y in 0..32 {
-                for x in 0..64 {
-                    let pixel_on = machine.video_memory[y * 64 + x];
-                    let color = if pixel_on {
-                        Color::RGB(255, 255, 255)
-                    } else {
-                        Color::RGB(0, 0, 0)
-                    };
-                    canvas.set_draw_color(color);
-                    let px = x as u32 * CELL_PIXEL_SIDE;
-                    let py = y as u32 * CELL_PIXEL_SIDE;
-                    canvas
-                        .fill_rect(Rect::new(
-                            px as i32,
-                            py as i32,
-                            CELL_PIXEL_SIDE,
-                            CELL_PIXEL_SIDE,
-                        ))
-                        .unwrap();
-                }
-            }
+            draw_canvas(&machine, &mut canvas);
         }
 
         canvas.present();
-        let elapsed_time = now.elapsed();
+        let elapsed_time = looping_time.elapsed();
 
-        debug!("Cycle: {}us, ", elapsed_time.as_micros());
-        // 1 second / 600Hz - cycle_time
-        if let Some(duration) = Duration::new(0, 10_000_000 / 6).checked_sub(elapsed_time) {
-            debug!("Sleep {}us", duration.as_micros());
-            ::std::thread::sleep(duration);
+        //debug!("Cycle: {}us, ", elapsed_time.as_micros());
+
+        if let Some(sleep_required) = current_clock_cycle.checked_sub(elapsed_time) {
+            let slept_time = Instant::now();
+            //::std::thread::sleep(duration);
+            spin_sleep::sleep(sleep_required);
+            debug!(
+                "Loop time: {}, Sleep Required: {}us, Actually Slept: {}us, Error: {}us",
+                elapsed_time.as_micros(),
+                sleep_required.as_micros(),
+                slept_time.elapsed().as_micros(),
+                sleep_required.as_micros() as i64 - slept_time.elapsed().as_micros() as i64,
+            );
+        }
+    }
+}
+
+pub fn process_sound<T: sdl2::audio::AudioCallback>(
+    machine: &Chip8,
+    device: &sdl2::audio::AudioDevice<T>,
+) {
+    if machine.st == 0 {
+        device.pause();
+        return;
+    }
+
+    if machine.st != 0 {
+        device.resume();
+    }
+}
+
+fn draw_canvas<T: RenderTarget>(machine: &Chip8, canvas: &mut Canvas<T>) {
+    let color_on: Color = Color::RGB(255, 255, 255);
+    let color_off: Color = Color::RGB(0, 0, 0);
+    for y in 0..32 {
+        for x in 0..64 {
+            let pixel_value = machine.get_pixel(x, y);
+            let color = if pixel_value { color_on } else { color_off };
+            canvas.set_draw_color(color);
+            let (px, py) = machine_coordinates_to_pixel(x, y);
+            canvas
+                .fill_rect(Rect::new(
+                    px as i32,
+                    py as i32,
+                    CELL_PIXEL_SIDE,
+                    CELL_PIXEL_SIDE,
+                ))
+                .unwrap();
         }
     }
 }
@@ -179,5 +256,29 @@ pub fn handle_key(
             }
         }
         _ => {}
+    }
+}
+
+use sdl2::audio::{AudioCallback, AudioSpecDesired};
+// https://docs.rs/sdl2/0.32.2/sdl2/audio/index.html#example
+struct SquareWave {
+    phase_inc: f32,
+    phase: f32,
+    volume: f32,
+}
+
+impl AudioCallback for SquareWave {
+    type Channel = f32;
+
+    fn callback(&mut self, out: &mut [f32]) {
+        // Generate a square wave
+        for x in out.iter_mut() {
+            *x = if self.phase <= 0.5 {
+                self.volume
+            } else {
+                -self.volume
+            };
+            self.phase = (self.phase + self.phase_inc) % 1.0;
+        }
     }
 }
