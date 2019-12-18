@@ -99,34 +99,34 @@ impl Chip8 {
     pub fn int(&mut self) {
         self.interrupted = !self.interrupted;
     }
-/*
-    pub fn process_sound<T: sdl2::audio::AudioCallback>(
-        &mut self,
-        device: &sdl2::audio::AudioDevice<T>,
-    ) {
-        if self.st == 0 {
-            device.pause();
-            //println!("SOUND STOP: TIEMPO: {}", self.chrono.elapsed().as_millis());
-            //self.int();
+    /*
+        pub fn process_sound<T: sdl2::audio::AudioCallback>(
+            &mut self,
+            device: &sdl2::audio::AudioDevice<T>,
+        ) {
+            if self.st == 0 {
+                device.pause();
+                //println!("SOUND STOP: TIEMPO: {}", self.chrono.elapsed().as_millis());
+                //self.int();
 
-            return;
-        }
+                return;
+            }
 
-        if self.st != 0 {
-            device.resume();
-            /*
-            Notification::new()
-            .summary("STOP")
-            .body("This will almost look like a real firefox notification.")
-            .icon("firefox")
-            .timeout(2000)
-            .show();
-            self.chrono = Instant::now();
-            println!("SOUND START: TIEMPO: {}", self.chrono.elapsed().as_millis());
-            */
+            if self.st != 0 {
+                device.resume();
+                /*
+                Notification::new()
+                .summary("STOP")
+                .body("This will almost look like a real firefox notification.")
+                .icon("firefox")
+                .timeout(2000)
+                .show();
+                self.chrono = Instant::now();
+                println!("SOUND START: TIEMPO: {}", self.chrono.elapsed().as_millis());
+                */
+            }
         }
-    }
-*/
+    */
     pub fn read_input(&mut self, input: &[bool]) {
         for (i, item) in input.iter().enumerate().take(16) {
             self.keys[i] = *item;
