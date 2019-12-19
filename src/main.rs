@@ -38,8 +38,8 @@ fn main() {
 
     let desired_spec = AudioSpecDesired {
         freq: Some(44100),
-        channels: Some(1), // mono
-        samples: None,     // default sample size
+        channels: Some(1),
+        samples: Some(512),
     };
 
     let buzzer = audio_subsystem
