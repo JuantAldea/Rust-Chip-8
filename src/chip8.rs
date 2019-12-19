@@ -22,6 +22,12 @@ static FONT: [u8; 5 * 16] = [
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
 
+#[derive(Copy, Clone, PartialEq)]
+pub enum State {
+    Paused,
+    Running,
+}
+
 pub struct Chip8 {
     pub memory: [u8; 4096],
     pub video_memory: [bool; 64 * 32],
@@ -37,7 +43,7 @@ pub struct Chip8 {
     pub font_base_addr: usize,
     pub waiting_for_key: bool,
     pub read_key_registry: usize,
-    pub interrupted: bool,
+    pub state: State,
     pub video_memory_tainted: bool,
     pub chrono: std::time::Instant,
 
@@ -76,7 +82,7 @@ impl Chip8 {
     }
 
     pub fn tick_clock(&mut self, input: &[bool; 16]) {
-        if self.interrupted {
+        if self.state == State::Paused {
             return;
         }
 
@@ -97,36 +103,12 @@ impl Chip8 {
     }
 
     pub fn int(&mut self) {
-        self.interrupted = !self.interrupted;
-    }
-    /*
-        pub fn process_sound<T: sdl2::audio::AudioCallback>(
-            &mut self,
-            device: &sdl2::audio::AudioDevice<T>,
-        ) {
-            if self.st == 0 {
-                device.pause();
-                //println!("SOUND STOP: TIEMPO: {}", self.chrono.elapsed().as_millis());
-                //self.int();
-
-                return;
-            }
-
-            if self.st != 0 {
-                device.resume();
-                /*
-                Notification::new()
-                .summary("STOP")
-                .body("This will almost look like a real firefox notification.")
-                .icon("firefox")
-                .timeout(2000)
-                .show();
-                self.chrono = Instant::now();
-                println!("SOUND START: TIEMPO: {}", self.chrono.elapsed().as_millis());
-                */
-            }
+        self.state = match self.state {
+            State::Paused => State::Running,
+            State::Running => State::Paused,
         }
-    */
+    }
+
     pub fn read_input(&mut self, input: &[bool]) {
         for (i, item) in input.iter().enumerate().take(16) {
             self.keys[i] = *item;
@@ -579,7 +561,7 @@ impl Default for Chip8 {
             font_base_addr: 0,
             waiting_for_key: false,
             read_key_registry: 0,
-            interrupted: false,
+            state: State::Running,
             video_memory_tainted: false,
             chrono: Instant::now(),
             use_original_shr_shl: false,

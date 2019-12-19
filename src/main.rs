@@ -24,10 +24,6 @@ let color_off: Color = Color::RGB(0, 0, 0);
 
 pub mod chip8;
 
-pub fn machine_coordinates_to_pixel(x: usize, y: usize) -> (u32, u32) {
-    (x as u32 * CELL_PIXEL_SIDE, y as u32 * CELL_PIXEL_SIDE)
-}
-
 fn main() {
     env_logger::init();
     let args: Vec<String> = env::args().collect();
@@ -119,9 +115,7 @@ fn main() {
                 Event::KeyDown {
                     keycode: Some(Keycode::Kp0),
                     ..
-                } => {
-                    current_clock_cycle = default_clock_cycle;
-                }
+                } => current_clock_cycle = default_clock_cycle,
 
                 Event::KeyDown {
                     keycode: Some(keycode),
@@ -137,7 +131,6 @@ fn main() {
             }
         }
 
-        //machine.process_sound(&buzzer);
         process_sound(&machine, &buzzer);
         machine.tick_clock(&keyboard);
 
@@ -152,10 +145,9 @@ fn main() {
 
         if let Some(sleep_required) = current_clock_cycle.checked_sub(elapsed_time) {
             let slept_time = Instant::now();
-            //::std::thread::sleep(duration);
             spin_sleep::sleep(sleep_required);
             debug!(
-                "Loop time: {}, Sleep Required: {}us, Actually Slept: {}us, Error: {}us",
+                "Loop time: {}us, Sleep Required: {}us, Slept for: {}us, Error: {}us",
                 elapsed_time.as_micros(),
                 sleep_required.as_micros(),
                 slept_time.elapsed().as_micros(),
@@ -179,12 +171,13 @@ pub fn process_sound<T: sdl2::audio::AudioCallback>(
 fn draw_canvas<T: RenderTarget>(machine: &Chip8, canvas: &mut Canvas<T>) {
     let color_on: Color = Color::RGB(255, 255, 255);
     let color_off: Color = Color::RGB(0, 0, 0);
+
     for y in 0..32 {
         for x in 0..64 {
             let pixel_value = machine.get_pixel(x, y);
             let color = if pixel_value { color_on } else { color_off };
             canvas.set_draw_color(color);
-            let (px, py) = machine_coordinates_to_pixel(x, y);
+            let (px, py) = (x as u32 * CELL_PIXEL_SIDE, y as u32 * CELL_PIXEL_SIDE);
             canvas
                 .fill_rect(Rect::new(
                     px as i32,
