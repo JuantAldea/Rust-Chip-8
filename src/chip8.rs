@@ -528,19 +528,47 @@ use std::fmt;
 impl fmt::Display for Chip8 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "=-------------------------------------------------").unwrap();
-        writeln!(f, "=Mx{:x?}", &self.memory[self.pc..self.pc + 6]).unwrap();
-        writeln!(f, "=Px{:?}", &self.video_memory[..10]).unwrap();
-        writeln!(f, "=Sx{:x?}", &self.stack).unwrap();
-        writeln!(f, "=Vx{:x?} ", &self.v).unwrap();
-        writeln!(f, "=Kx{:x?} ", &self.keys).unwrap();
-        writeln!(f, "=Mix{:x?} ", &self.memory[self.i..self.i + 6]).unwrap();
         writeln!(
             f,
-            "=PC: {:x}, SP: {:x}, DT: {:x}, ST: {:x} I: {:x} TC: {:}",
+            "=PC: 0x{:0>2x}, SP: 0x{:0>2x}, DT: 0x{:0>2x}, ST: 0x{:0>2x}, I: 0x{:0>2x}, Timer counter: {:}",
             &self.pc, &self.sp, &self.dt, &self.st, &self.i, &self.timer_counter,
         )
         .unwrap();
-        write!(f, "-------------------------------------------------")
+        writeln!(
+            f,
+            "=M[PC..+32]: 0x{:0>2x?}",
+            &self.memory[self.pc..self.pc + 32]
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "=M[I.. +32]: 0x{:0>2x?}",
+            &self.memory[self.i..self.i + 32]
+        )
+        .unwrap();
+        writeln!(f, "=REGS:       0x{:0>2x?}", &self.v).unwrap();
+        writeln!(f, "=STACK:      0x{:0>4x?}", &self.stack).unwrap();
+        writeln!(
+            f,
+            "=VIDEO:      0b{:?}",
+            &self.video_memory[..32]
+                .iter()
+                .map(|bit| if *bit { 1 } else { 0 })
+                .collect::<Vec<u8>>()
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "=KEYS:       0b{:?}",
+            &self
+                .keys
+                .iter()
+                .map(|bit| if *bit { 1 } else { 0 })
+                .collect::<Vec<u8>>()
+        )
+        .unwrap();
+
+        write!(f, "=-------------------------------------------------")
     }
 }
 
